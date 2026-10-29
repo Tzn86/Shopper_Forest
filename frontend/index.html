@@ -1,0 +1,457 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Will this visitor buy?</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink: #18222B;
+  --paper: #F3F5F1;
+  --surface: #FFFFFF;
+  --pine: #2E6A4F;
+  --plum: #7B3F63;
+  --fog: #5F6B75;
+  --line: #DCE1DE;
+  --track: #E4E8E5;
+  --focus: #2E6A4F;
+  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body: "Instrument Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink: #E6EBE8;
+    --paper: #12181C;
+    --surface: #1A2227;
+    --pine: #62B68C;
+    --plum: #C37EA6;
+    --fog: #9AA6AE;
+    --line: #2B353B;
+    --track: #2B353B;
+    --focus: #62B68C;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: 16px;
+  line-height: 1.55;
+  padding: env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px);
+}
+.page { max-width: 1180px; margin: 0 auto; padding: 40px 24px 96px; }
+
+header { max-width: 62ch; margin-bottom: 36px; }
+h1 {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: clamp(2.2rem, 5vw, 3.6rem);
+  line-height: 1.02;
+  letter-spacing: -0.02em;
+  margin: 0 0 14px;
+}
+header p { margin: 0; color: var(--fog); font-size: 1.05rem; }
+
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: 48px; align-items: start; }
+
+/* ---------- Controls ---------- */
+.presets { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 28px; align-items: center; }
+.presets span { color: var(--fog); font-size: 0.92rem; margin-right: 4px; }
+button.preset {
+  font: 500 0.92rem var(--body);
+  color: var(--ink);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 7px 14px;
+  cursor: pointer;
+}
+button.preset:hover { border-color: var(--fog); }
+button.preset[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+
+fieldset { border: 0; margin: 0 0 30px; padding: 0; }
+legend { font-family: var(--display); font-weight: 500; font-size: 1.2rem; margin-bottom: 14px; padding: 0; }
+.field { padding: 12px 0; border-top: 1px solid var(--line); }
+.field-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.field label { font-weight: 500; }
+.field output { font-variant-numeric: tabular-nums; font-weight: 600; }
+.hint { color: var(--fog); font-size: 0.88rem; margin: 2px 0 8px; }
+
+input[type="range"] { width: 100%; accent-color: var(--pine); height: 28px; margin: 0; }
+select {
+  font: 500 1rem var(--body);
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 10px;
+  width: 100%;
+  margin-top: 6px;
+}
+.check { display: flex; align-items: center; gap: 10px; font-weight: 500; cursor: pointer; }
+.check input { width: 18px; height: 18px; accent-color: var(--pine); }
+.selects { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; border-radius: 4px; }
+
+/* ---------- Result ---------- */
+.result {
+  position: sticky;
+  top: calc(env(safe-area-inset-top, 0px) + 24px);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 28px;
+}
+.verdict { font-family: var(--display); font-weight: 700; font-size: clamp(2.6rem, 6vw, 4.2rem); line-height: 1; letter-spacing: -0.03em; margin: 0; font-variant-numeric: tabular-nums; }
+.verdict-label { font-size: 1.15rem; font-weight: 500; margin: 8px 0 4px; }
+.votes { color: var(--fog); margin: 0 0 20px; }
+.result[data-state="buy"] .verdict { color: var(--pine); }
+.result[data-state="nobuy"] .verdict { color: var(--plum); }
+
+.forest {
+  display: grid;
+  grid-template-columns: repeat(25, 1fr);
+  gap: 4px;
+  margin-bottom: 10px;
+}
+.tree {
+  aspect-ratio: 3 / 4;
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+  background: var(--track);
+  transition: background-color 280ms ease;
+}
+.tree.buy { background: var(--pine); }
+.tree.nobuy { background: var(--plum); }
+.legend { display: flex; gap: 18px; font-size: 0.88rem; color: var(--fog); margin-bottom: 26px; flex-wrap: wrap; }
+.legend i { display: inline-block; width: 10px; height: 12px; clip-path: polygon(50% 0, 100% 100%, 0 100%); margin-right: 6px; vertical-align: -1px; }
+
+h2 { font-family: var(--display); font-weight: 500; font-size: 1.2rem; margin: 0 0 4px; }
+.sub { color: var(--fog); font-size: 0.9rem; margin: 0 0 14px; }
+.imp { list-style: none; margin: 0 0 24px; padding: 0; }
+.imp li { display: grid; grid-template-columns: 11.5em 1fr 3.2em; gap: 10px; align-items: center; font-size: 0.92rem; padding: 4px 0; }
+.imp .bar { height: 8px; border-radius: 4px; background: var(--ink); opacity: 0.85; }
+.imp .num { text-align: right; color: var(--fog); font-variant-numeric: tabular-nums; }
+.check-note { border-top: 1px solid var(--line); padding-top: 16px; font-size: 0.9rem; color: var(--fog); margin: 0; }
+.check-note strong { color: var(--ink); font-weight: 600; }
+
+.error {
+  display: none;
+  border: 1px solid var(--plum);
+  color: var(--ink);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 24px;
+}
+.error.show { display: block; }
+.error code { font-size: 0.9em; }
+
+.mobile-bar { display: none; }
+
+@media (max-width: 880px) {
+  .layout { grid-template-columns: minmax(0, 1fr); gap: 32px; }
+  .result { position: static; }
+  .imp li { grid-template-columns: 9.5em 1fr 3em; }
+  .mobile-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    padding: 12px 20px calc(12px + env(safe-area-inset-bottom, 0px));
+    background: var(--surface);
+    border-top: 1px solid var(--line);
+    font-weight: 600;
+    z-index: 5;
+  }
+  .mobile-bar a { color: var(--ink); font-weight: 500; font-size: 0.92rem; }
+}
+@media (max-width: 480px) {
+  .forest { grid-template-columns: repeat(20, 1fr); gap: 3px; }
+  .result { padding: 20px; }
+  .selects { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tree { transition: none; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1>Will this visitor buy?</h1>
+    <p>Describe one visit to an online shop. A Random Forest of 300 decision trees, trained on 12,330 real visits, votes on whether it ends in a purchase.</p>
+  </header>
+
+  <div class="error" id="error" role="alert"></div>
+
+  <div class="layout">
+    <form id="form" autocomplete="off" onsubmit="return false">
+      <div class="presets" role="group" aria-label="Example visitors">
+        <span>Try a visitor:</span>
+        <button type="button" class="preset" data-preset="bounce" aria-pressed="false">Quick bounce</button>
+        <button type="button" class="preset" data-preset="window" aria-pressed="false">Window shopper</button>
+        <button type="button" class="preset" data-preset="ready" aria-pressed="false">Ready to buy</button>
+      </div>
+
+      <fieldset id="browsing"><legend>What they looked at</legend></fieldset>
+      <fieldset id="leaving"><legend>How they moved through the site</legend></fieldset>
+      <fieldset>
+        <legend>Who and when</legend>
+        <div class="field selects">
+          <label>Visitor
+            <select id="VisitorType"></select>
+          </label>
+          <label>Month
+            <select id="Month"></select>
+          </label>
+        </div>
+        <div id="when"></div>
+        <div class="field">
+          <label class="check"><input type="checkbox" id="Weekend"> Visit is on a weekend</label>
+        </div>
+      </fieldset>
+    </form>
+
+    <section class="result" id="result" aria-live="polite" data-state="">
+      <p class="verdict" id="percent">–</p>
+      <p class="verdict-label" id="verdictLabel">Waiting for the model…</p>
+      <p class="votes" id="votes">&nbsp;</p>
+      <div class="forest" id="forest" aria-hidden="true"></div>
+      <div class="legend">
+        <span><i style="background:var(--pine)"></i>Tree votes “will buy”</span>
+        <span><i style="background:var(--plum)"></i>Tree votes “won’t buy”</span>
+      </div>
+
+      <h2>What this model pays attention to</h2>
+      <p class="sub">Feature importance across all trees. Longer bar, bigger influence.</p>
+      <ul class="imp" id="importance"></ul>
+
+      <p class="check-note" id="modelCheck"></p>
+    </section>
+  </div>
+</div>
+
+<div class="mobile-bar" aria-hidden="true">
+  <span id="mobilePercent">–</span>
+  <a href="#result">See the forest</a>
+</div>
+
+<script>
+// When the page is served by the API (http://localhost:8000) we use relative URLs.
+// If you open index.html directly as a file, we fall back to localhost:8000.
+const API = location.protocol.startsWith("http") ? "" : "http://localhost:8000";
+
+// Each slider: which API field it controls, and how to convert the slider value.
+const SLIDERS = [
+  { group: "browsing", id: "ProductRelated", label: "Product pages viewed", min: 0, max: 150, step: 1, value: 18 },
+  { group: "browsing", id: "ProductMinutes", field: "ProductRelated_Duration", label: "Minutes on product pages",
+    min: 0, max: 60, step: 1, value: 10, toApi: v => v * 60, show: v => `${v} min` },
+  { group: "browsing", id: "Administrative", label: "Account pages viewed", hint: "Login, cart and account pages",
+    min: 0, max: 20, step: 1, value: 1 },
+  { group: "browsing", id: "Informational", label: "Info pages viewed", hint: "Shipping, returns and FAQ pages",
+    min: 0, max: 10, step: 1, value: 0 },
+  { group: "leaving", id: "PageValues", label: "Page value",
+    hint: "From Google Analytics: how often the pages they saw led to a sale. Most visits score 0.",
+    min: 0, max: 100, step: 1, value: 0 },
+  { group: "leaving", id: "BounceRates", label: "Bounce rate of pages visited",
+    hint: "Share of people who leave right after landing on these pages",
+    min: 0, max: 20, step: 0.5, value: 2, toApi: v => v / 100, show: v => `${v}%` },
+  { group: "leaving", id: "ExitRates", label: "Exit rate of pages visited",
+    hint: "Share of page views that were the last page of a visit",
+    min: 0, max: 20, step: 0.5, value: 4, toApi: v => v / 100, show: v => `${v}%` },
+  { group: "when", id: "SpecialDay", label: "Closeness to a holiday",
+    hint: "1 means it's the best shopping day before Valentine's, Mother's Day and similar",
+    min: 0, max: 1, step: 0.2, value: 0, show: v => (+v).toFixed(1) },
+];
+
+const PRESETS = {
+  bounce: { ProductRelated: 1, ProductMinutes: 0, Administrative: 0, Informational: 0, PageValues: 0,
+            BounceRates: 20, ExitRates: 20, VisitorType: "New_Visitor" },
+  window: { ProductRelated: 25, ProductMinutes: 15, Administrative: 1, Informational: 0, PageValues: 0,
+            BounceRates: 1, ExitRates: 3, VisitorType: "Returning_Visitor" },
+  ready:  { ProductRelated: 30, ProductMinutes: 20, Administrative: 4, Informational: 1, PageValues: 45,
+            BounceRates: 0, ExitRates: 1.5, VisitorType: "Returning_Visitor" },
+};
+
+const NICE_NAMES = {
+  PageValues: "Page value", ExitRates: "Exit rate", BounceRates: "Bounce rate",
+  ProductRelated: "Product pages", ProductRelated_Duration: "Time on products",
+  Administrative: "Account pages", Administrative_Duration: "Time on account",
+  Informational: "Info pages", Informational_Duration: "Time on info pages",
+  Month: "Month", VisitorType: "Visitor type", TrafficType: "Traffic source",
+  Region: "Region", Browser: "Browser", OperatingSystems: "Operating system",
+  SpecialDay: "Near a holiday", Weekend: "Weekend",
+};
+const VISITOR_NAMES = { Returning_Visitor: "Returning visitor", New_Visitor: "New visitor", Other: "Other" };
+
+const $ = id => document.getElementById(id);
+
+// ---------- Build the form ----------
+for (const s of SLIDERS) {
+  const show = s.show || (v => v);
+  const wrap = document.createElement("div");
+  wrap.className = "field";
+  wrap.innerHTML = `
+    <div class="field-head">
+      <label for="${s.id}">${s.label}</label>
+      <output for="${s.id}" id="${s.id}-out">${show(s.value)}</output>
+    </div>
+    ${s.hint ? `<p class="hint" id="${s.id}-hint">${s.hint}</p>` : ""}
+    <input type="range" id="${s.id}" min="${s.min}" max="${s.max}" step="${s.step}" value="${s.value}"
+      ${s.hint ? `aria-describedby="${s.id}-hint"` : ""}>`;
+  $(s.group).appendChild(wrap);
+  $(s.id).addEventListener("input", () => {
+    $(`${s.id}-out`).textContent = show($(s.id).value);
+    clearPresetState();
+    schedulePredict();
+  });
+}
+
+function clearPresetState() {
+  document.querySelectorAll(".preset").forEach(b => b.setAttribute("aria-pressed", "false"));
+}
+
+document.querySelectorAll(".preset").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const preset = PRESETS[btn.dataset.preset];
+    for (const [id, value] of Object.entries(preset)) {
+      $(id).value = value;
+      const s = SLIDERS.find(x => x.id === id);
+      if (s) $(`${id}-out`).textContent = (s.show || (v => v))(value);
+    }
+    clearPresetState();
+    btn.setAttribute("aria-pressed", "true");
+    schedulePredict();
+  });
+});
+
+["VisitorType", "Month", "Weekend"].forEach(id =>
+  $(id).addEventListener("change", () => { clearPresetState(); schedulePredict(); }));
+
+// ---------- Talk to the API ----------
+function readVisit() {
+  const visit = {};
+  for (const s of SLIDERS) {
+    const v = parseFloat($(s.id).value);
+    visit[s.field || s.id] = s.toApi ? s.toApi(v) : v;
+  }
+  visit.VisitorType = $("VisitorType").value;
+  visit.Month = $("Month").value;
+  visit.Weekend = $("Weekend").checked;
+  return visit;
+}
+
+let timer = null;
+let controller = null;
+function schedulePredict() {
+  clearTimeout(timer);
+  timer = setTimeout(predict, 120);
+}
+
+async function predict() {
+  if (controller) controller.abort();
+  controller = new AbortController();
+  try {
+    const res = await fetch(`${API}/api/predict`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(readVisit()),
+      signal: controller.signal,
+    });
+    if (!res.ok) throw new Error(`The API answered with status ${res.status}.`);
+    showResult(await res.json());
+    hideError();
+  } catch (err) {
+    if (err.name !== "AbortError") showError(err);
+  }
+}
+
+// ---------- Show results ----------
+function buildForest(n) {
+  const forest = $("forest");
+  forest.innerHTML = "";
+  for (let i = 0; i < n; i++) {
+    const t = document.createElement("span");
+    t.className = "tree";
+    t.style.transitionDelay = `${i}ms`;
+    forest.appendChild(t);
+  }
+}
+
+function showResult(r) {
+  const pct = Math.round(r.probability * 100);
+  const willBuy = r.label === "will_buy";
+  $("result").dataset.state = willBuy ? "buy" : "nobuy";
+  $("percent").textContent = `${pct}%`;
+  $("verdictLabel").textContent = willBuy ? "chance this visit ends in a purchase. Likely buyer." :
+                                            "chance this visit ends in a purchase. Unlikely buyer.";
+  $("votes").textContent = `${r.votes_buy} of ${r.votes_total} trees voted “will buy”.`;
+  $("mobilePercent").textContent = `${pct}% likely to buy`;
+
+  const trees = $("forest").children;
+  if (trees.length !== r.tree_votes.length) buildForest(r.tree_votes.length);
+  // Show "will buy" trees first so the split is easy to read
+  const sorted = [...r.tree_votes].sort((a, b) => b - a);
+  sorted.forEach((vote, i) => {
+    $("forest").children[i].className = `tree ${vote ? "buy" : "nobuy"}`;
+  });
+}
+
+function showMeta(meta) {
+  const fill = (id, values, names = {}) => {
+    $(id).innerHTML = values.map(v => `<option value="${v}">${names[v] || v}</option>`).join("");
+  };
+  fill("VisitorType", meta.options.VisitorType, VISITOR_NAMES);
+  fill("Month", meta.options.Month);
+  $("VisitorType").value = meta.defaults.VisitorType;
+  $("Month").value = meta.defaults.Month;
+
+  const top = meta.importance.slice(0, 8);
+  const max = top[0].importance;
+  $("importance").innerHTML = top.map(f => `
+    <li>
+      <span>${NICE_NAMES[f.feature] || f.feature}</span>
+      <span class="bar" style="width:${(f.importance / max) * 100}%"></span>
+      <span class="num">${(f.importance * 100).toFixed(1)}%</span>
+    </li>`).join("");
+
+  const m = meta.metrics;
+  const tested = Math.round(meta.n_rows * 0.2).toLocaleString();
+  $("modelCheck").innerHTML =
+    `Tested on ${tested} visits it never saw: it finds <strong>${Math.round(m.recall * 100)}%</strong> of real buyers, ` +
+    `and is right <strong>${Math.round(m.accuracy * 100)}%</strong> of the time overall. ` +
+    `Always guessing “won’t buy” would score ${Math.round(m.baseline_accuracy * 100)}% but find zero buyers.`;
+
+  buildForest(meta.n_trees);
+}
+
+function showError(err) {
+  $("error").innerHTML = `Can’t reach the model. In your terminal, run <code>uvicorn api:app --reload</code> ` +
+    `from the project folder, then refresh this page. <br><small>${err.message}</small>`;
+  $("error").classList.add("show");
+}
+function hideError() { $("error").classList.remove("show"); }
+
+// ---------- Start ----------
+(async function start() {
+  try {
+    const res = await fetch(`${API}/api/meta`);
+    if (!res.ok) throw new Error(`The API answered with status ${res.status}.`);
+    showMeta(await res.json());
+    hideError();
+    predict();
+  } catch (err) {
+    showError(err);
+  }
+})();
+</script>
+</body>
+</html>
